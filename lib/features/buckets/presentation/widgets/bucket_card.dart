@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class BucketCard extends StatelessWidget {
   final String label;
@@ -17,50 +19,81 @@ class BucketCard extends StatelessWidget {
   double get remaining => allocated - spent;
   double get progress => allocated > 0 ? (spent / allocated).clamp(0.0, 1.0) : 0.0;
 
-  Color get progressColor {
+  Color get trackColor {
     if (progress < 0.7) return color;
-    if (progress < 0.9) return Colors.orange;
-    return Colors.red;
+    if (progress < 0.9) return TallyColors.systemOrange;
+    return TallyColors.systemRed;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-                const SizedBox(width: 8),
-                Text(label, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Text(
-                  '€${remaining.toStringAsFixed(2)} restant',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white54),
+    final fmt =
+        NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 0);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: TallyColors.systemBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: TallyColors.label,
+                  letterSpacing: -0.4,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
+              ),
+              const Spacer(),
+              Text(
+                '${fmt.format(remaining)} restant',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: TallyColors.secondaryLabel,
+                  letterSpacing: -0.24,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: Colors.white12,
-              valueColor: AlwaysStoppedAnimation(progressColor),
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
+              backgroundColor: const Color(0xFFE5E5EA),
+              valueColor: AlwaysStoppedAnimation<Color>(trackColor),
+              minHeight: 4,
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('€${spent.toStringAsFixed(2)} dépensé', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white54)),
-                Text('/ €${allocated.toStringAsFixed(2)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white38)),
-              ],
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${fmt.format(spent)} dépensé',
+                style: const TextStyle(
+                    fontSize: 12, color: TallyColors.secondaryLabel),
+              ),
+              Text(
+                fmt.format(allocated),
+                style: const TextStyle(
+                    fontSize: 12, color: TallyColors.tertiaryLabel),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

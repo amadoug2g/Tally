@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:app_links/app_links.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
 class ConnectScreen extends ConsumerStatefulWidget {
@@ -46,22 +48,24 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
     final authState = ref.watch(authProvider);
 
     ref.listen(authProvider, (_, next) {
-      if (next is AuthConnected) {
-        context.go('/dashboard');
-      }
+      if (next is AuthConnected) context.go('/dashboard');
     });
 
     return Scaffold(
+      backgroundColor: TallyColors.groupedBackground,
       appBar: AppBar(
         title: const Text('Connecter Revolut'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(CupertinoIcons.chevron_back),
+          color: TallyColors.systemBlue,
           onPressed: () => context.go('/onboarding'),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: _buildBody(authState),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: _buildBody(authState),
+        ),
       ),
     );
   }
@@ -79,9 +83,13 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
+            CupertinoActivityIndicator(radius: 14),
             SizedBox(height: 16),
-            Text('Récupération de ton compte...', style: TextStyle(color: Colors.white54)),
+            Text(
+              'Récupération de ton compte…',
+              style: TextStyle(
+                  fontSize: 15, color: TallyColors.secondaryLabel),
+            ),
           ],
         ),
       );
@@ -90,37 +98,51 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Credentials GoCardless', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         Text(
-          'Crée un compte gratuit sur bankaccountdata.gocardless.com — section "User Secrets".',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white54),
+          'Credentials GoCardless',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: 32),
-        TextField(
+        const SizedBox(height: 8),
+        const Text(
+          'Crée un compte gratuit sur bankaccountdata.gocardless.com → "User Secrets".',
+          style: TextStyle(
+              fontSize: 15, color: TallyColors.secondaryLabel),
+        ),
+        const SizedBox(height: 28),
+        _IOSTextField(
           controller: _secretIdCtrl,
-          decoration: const InputDecoration(labelText: 'Secret ID', border: OutlineInputBorder()),
+          placeholder: 'Secret ID',
+          autofillHint: AutofillHints.username,
         ),
-        const SizedBox(height: 16),
-        TextField(
+        const SizedBox(height: 1),
+        _IOSTextField(
           controller: _secretKeyCtrl,
+          placeholder: 'Secret Key',
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'Secret Key', border: OutlineInputBorder()),
+          autofillHint: AutofillHints.password,
         ),
         if (state is AuthError) ...[
           const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.red.withAlpha(30),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.redAccent.withAlpha(80)),
+              color: TallyColors.systemRed.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                const Icon(CupertinoIcons.exclamationmark_circle,
+                    color: TallyColors.systemRed, size: 17),
                 const SizedBox(width: 8),
-                Expanded(child: Text(state.message, style: const TextStyle(color: Colors.redAccent, fontSize: 13))),
+                Expanded(
+                  child: Text(
+                    state.message,
+                    style: const TextStyle(
+                        color: TallyColors.systemRed, fontSize: 14),
+                  ),
+                ),
               ],
             ),
           ),
@@ -128,10 +150,22 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
         const Spacer(),
         FilledButton(
           onPressed: state is AuthAuthenticating ? null : _onConnect,
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: TallyColors.systemBlue,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
           child: state is AuthAuthenticating
-              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Connecter'),
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Connecter',
+                  style: TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -150,10 +184,50 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   }
 }
 
+// ─── iOS-style grouped text field ─────────────────────────────────────────────
+
+class _IOSTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String placeholder;
+  final bool obscureText;
+  final String? autofillHint;
+
+  const _IOSTextField({
+    required this.controller,
+    required this.placeholder,
+    this.obscureText = false,
+    this.autofillHint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: TallyColors.systemBackground,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        autofillHints:
+            autofillHint != null ? [autofillHint!] : null,
+        style: const TextStyle(
+            fontSize: 17, color: TallyColors.label, letterSpacing: -0.4),
+        decoration: InputDecoration(
+          hintText: placeholder,
+          hintStyle: const TextStyle(
+              fontSize: 17, color: TallyColors.tertiaryLabel),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Waiting for OAuth ────────────────────────────────────────────────────────
+
 class _WaitingOAuthView extends StatelessWidget {
   final String link;
   final VoidCallback onRetry;
-
   const _WaitingOAuthView({required this.link, required this.onRetry});
 
   @override
@@ -161,30 +235,44 @@ class _WaitingOAuthView extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.open_in_browser, size: 64, color: Colors.white38),
+        const Icon(CupertinoIcons.arrow_up_right_square,
+            size: 56, color: TallyColors.secondaryLabel),
         const SizedBox(height: 24),
-        Text(
+        const Text(
           'Ouvre Revolut pour autoriser',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: TallyColors.label),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'Une fois autorisé, tu seras redirigé automatiquement.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white54),
+          style: TextStyle(
+              fontSize: 15, color: TallyColors.secondaryLabel),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 40),
         FilledButton.icon(
-          onPressed: () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
-          icon: const Icon(Icons.open_in_new),
+          onPressed: () => launchUrl(Uri.parse(link),
+              mode: LaunchMode.externalApplication),
+          icon: const Icon(CupertinoIcons.arrow_up_right_square),
           label: const Text('Ouvrir Revolut'),
-          style: FilledButton.styleFrom(minimumSize: const Size(200, 48)),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(220, 52),
+            backgroundColor: TallyColors.systemBlue,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
         ),
         const SizedBox(height: 16),
         TextButton(
           onPressed: onRetry,
-          child: const Text('Recommencer', style: TextStyle(color: Colors.white38)),
+          style: TextButton.styleFrom(
+              foregroundColor: TallyColors.secondaryLabel),
+          child: const Text('Recommencer',
+              style: TextStyle(fontSize: 15)),
         ),
       ],
     );
