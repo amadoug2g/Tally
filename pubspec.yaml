@@ -26,9 +26,8 @@ dependencies:
   # Secure storage (GoCardless tokens)
   flutter_secure_storage: ^9.2.4
 
-  # Local database
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
+  # Local persistence
+  shared_preferences: ^2.3.5
   path_provider: ^2.1.5
 
   # Formatting
@@ -47,7 +46,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.4.15
   riverpod_generator: ^2.6.5
-  isar_generator: ^3.1.0+1
 
 flutter:
   uses-material-design: true

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class TransactionsScreen extends StatelessWidget {
   const TransactionsScreen({super.key});
