@@ -9,26 +9,24 @@ import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/buckets/presentation/screens/buckets_screen.dart';
 import '../../features/bills/presentation/screens/bills_screen.dart';
+import '../constants/mock_data.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/onboarding',
-    redirect: (context, state) async {
-      final config = await ref.read(bucketConfigProvider.future);
-      final isConnected = ref.read(authProvider) is AuthConnected;
-      final loc = state.matchedLocation;
+    initialLocation: kMockMode ? '/dashboard' : '/onboarding',
+    redirect: kMockMode
+        ? null
+        : (context, state) async {
+            final config = await ref.read(bucketConfigProvider.future);
+            final isConnected = ref.read(authProvider) is AuthConnected;
+            final loc = state.matchedLocation;
 
-      // No config → onboarding
-      if (config == null && loc != '/onboarding') return '/onboarding';
+            if (config == null && loc != '/onboarding') return '/onboarding';
+            if (config != null && !isConnected && loc == '/onboarding') return '/connect';
+            if (isConnected && (loc == '/onboarding' || loc == '/connect')) return '/dashboard';
 
-      // Config exists but not connected → connect screen
-      if (config != null && !isConnected && loc == '/onboarding') return '/connect';
-
-      // Already connected → skip onboarding and connect
-      if (isConnected && (loc == '/onboarding' || loc == '/connect')) return '/dashboard';
-
-      return null;
-    },
+            return null;
+          },
     routes: [
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
       GoRoute(path: '/connect', builder: (context, state) => const ConnectScreen()),
