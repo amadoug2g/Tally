@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/connect_screen.dart';
 import '../../features/auth/presentation/screens/onboarding_screen.dart';
 import '../../features/auth/presentation/providers/bucket_config_provider.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/buckets/presentation/screens/buckets_screen.dart';
@@ -14,10 +15,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/onboarding',
     redirect: (context, state) async {
       final config = await ref.read(bucketConfigProvider.future);
-      final isOnboarding = state.matchedLocation == '/onboarding';
+      final isConnected = ref.read(authProvider) is AuthConnected;
+      final loc = state.matchedLocation;
 
-      // Skip onboarding if already configured
-      if (config != null && isOnboarding) return '/dashboard';
+      // No config → onboarding
+      if (config == null && loc != '/onboarding') return '/onboarding';
+
+      // Config exists but not connected → connect screen
+      if (config != null && !isConnected && loc == '/onboarding') return '/connect';
+
+      // Already connected → skip onboarding and connect
+      if (isConnected && (loc == '/onboarding' || loc == '/connect')) return '/dashboard';
+
       return null;
     },
     routes: [
