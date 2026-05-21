@@ -2,7 +2,7 @@ class AppConstants {
   static const String appName = 'Tally';
 
   // Plaid API
-  static const String plaidBaseUrl = 'https://sandbox.plaid.com';
+  static const String plaidBaseUrl = 'https://development.plaid.com';
 
   // Bucket names
   static const String bucketLife = 'Life';

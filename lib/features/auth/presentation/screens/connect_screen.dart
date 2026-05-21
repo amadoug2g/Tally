@@ -150,7 +150,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
         ],
         const Spacer(),
         FilledButton(
-          onPressed: _onConnect,
+          onPressed: state is AuthAuthenticating ? null : _onConnect,
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(52),
             backgroundColor: TallyColors.systemBlue,
