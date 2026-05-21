@@ -23,7 +23,7 @@ dependencies:
   # HTTP
   dio: ^5.8.0+1
 
-  # Secure storage (GoCardless tokens)
+  # Secure storage (Plaid tokens)
   flutter_secure_storage: ^9.2.4
 
   # Local persistence
@@ -36,9 +36,12 @@ dependencies:
   # Charts
   fl_chart: ^0.70.2
 
-  # URL launcher (OAuth flow)
+  # URL launcher
   url_launcher: ^6.3.1
   app_links: ^6.4.0
+
+  # Plaid Link SDK (iOS/Android natif)
+  plaid_flutter: ^5.1.1
 
 dev_dependencies:
   flutter_test:

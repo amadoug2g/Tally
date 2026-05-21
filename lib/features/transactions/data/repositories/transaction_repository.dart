@@ -1,186 +1,121 @@
-import 'package:dio/dio.dart';
 import '../datasources/categorizer.dart';
-import '../datasources/gocardless_datasource.dart';
+import '../datasources/plaid_datasource.dart';
 import '../../domain/entities/transaction.dart';
 
 class TransactionRepository {
-  final GoCardlessDataSource _ds;
+  final PlaidDataSource _ds;
   final TransactionCategorizer _categorizer;
 
   TransactionRepository(this._ds, this._categorizer);
 
   // ─── Public API ──────────────────────────────────────────────────────────────
 
-  /// Fetches all booked transactions for the current calendar month.
+  /// Fetches all transactions for the current calendar month.
   Future<List<Transaction>> fetchMonthlyTransactions() async {
-    final token = await _requireToken();
-    final accountId = await _requireAccountId();
+    final creds = await _requireCredentials();
     final now = DateTime.now();
     final dateFrom = DateTime(now.year, now.month, 1);
 
-    return _fetchWithRefresh(
-      () => _ds.getTransactions(token, accountId, dateFrom: dateFrom),
-      _parseTransactions,
+    final data = await _ds.getTransactions(
+      creds.clientId,
+      creds.secret,
+      creds.accessToken,
+      dateFrom: dateFrom,
     );
+    return _parseTransactions(data);
   }
 
-  /// Returns the current interim-available balance in EUR, or null on failure.
+  /// Returns the available balance of the first account, or null on failure.
   Future<double?> fetchBalance() async {
-    final token = await _ds.getStoredAccessToken();
-    final accountId = await _ds.getStoredAccountId();
-    if (token == null || accountId == null) return null;
+    final accessToken = await _ds.getStoredAccessToken();
+    final clientId = await _ds.getStoredClientId();
+    final secret = await _ds.getStoredSecret();
+    if (accessToken == null || clientId == null || secret == null) return null;
 
     try {
-      final data = await _ds.getBalances(token, accountId);
+      final data = await _ds.getBalance(clientId, secret, accessToken);
       return _parseBalance(data);
     } catch (_) {
       return null;
     }
   }
 
-  // ─── Token refresh ────────────────────────────────────────────────────────────
-
-  /// Wraps an API call; on 401 it refreshes the access token and retries once.
-  Future<T> _fetchWithRefresh<T>(
-    Future<Map<String, dynamic>> Function() call,
-    T Function(Map<String, dynamic>) parse,
-  ) async {
-    try {
-      return parse(await call());
-    } on DioException catch (e) {
-      if (e.response?.statusCode != 401) rethrow;
-
-      final newToken = await _doRefresh();
-      final accountId = await _requireAccountId();
-      final now = DateTime.now();
-      final dateFrom = DateTime(now.year, now.month, 1);
-
-      // Rebuild the call with the fresh token
-      final data = await _ds.getTransactions(newToken, accountId,
-          dateFrom: dateFrom);
-      return parse(data);
-    }
-  }
-
-  Future<String> _doRefresh() async {
-    final refresh = await _ds.getStoredRefreshToken();
-    if (refresh == null) {
-      throw Exception('Session expirée. Reconnecte-toi à Revolut.');
-    }
-    final data = await _ds.refreshAccessToken(refresh);
-    final newAccess = data['access'] as String;
-    await _ds.storeAccessToken(newAccess);
-    return newAccess;
-  }
-
   // ─── Parsing ──────────────────────────────────────────────────────────────────
 
   List<Transaction> _parseTransactions(Map<String, dynamic> data) {
-    final booked =
-        (data['transactions']?['booked'] as List<dynamic>?) ?? <dynamic>[];
-    final pending =
-        (data['transactions']?['pending'] as List<dynamic>?) ?? <dynamic>[];
+    final txList =
+        (data['transactions'] as List<dynamic>?) ?? <dynamic>[];
 
-    final txs = [
-      ...booked.map<Transaction?>((raw) {
-        try {
-          return _mapOne(raw as Map<String, dynamic>, isPending: false);
-        } catch (_) {
-          return null;
-        }
-      }).whereType<Transaction>(),
-      ...pending.map<Transaction?>((raw) {
-        try {
-          return _mapOne(raw as Map<String, dynamic>, isPending: true);
-        } catch (_) {
-          return null;
-        }
-      }).whereType<Transaction>(),
-    ];
+    final txs = txList.map<Transaction?>((raw) {
+      try {
+        return _mapOne(raw as Map<String, dynamic>);
+      } catch (_) {
+        return null;
+      }
+    }).whereType<Transaction>().toList();
 
     txs.sort((a, b) => b.date.compareTo(a.date));
     return txs;
   }
 
-  Transaction _mapOne(Map<String, dynamic> raw, {bool isPending = false}) {
-    final amountStr =
-        (raw['transactionAmount'] as Map<String, dynamic>?)?['amount']
-                as String? ??
-            '0';
-    final amount = double.tryParse(amountStr) ?? 0.0;
+  Transaction _mapOne(Map<String, dynamic> raw) {
+    final isPending = raw['pending'] as bool? ?? false;
 
-    final creditor = raw['creditorName'] as String?;
-    final debtor = raw['debtorName'] as String?;
-    final receiver = creditor ?? debtor;
+    // Plaid: positive = expense, negative = income → flip to match our convention
+    final plaidAmount = (raw['amount'] as num?)?.toDouble() ?? 0.0;
+    final amount = -plaidAmount;
 
-    // Revolut returns multiple description fields; pick the most informative one
-    final description = _pickDescription(raw, receiver);
+    final merchant = raw['merchant_name'] as String?;
+    final name = raw['name'] as String?;
+    final description = merchant ?? name ?? 'Transaction';
 
-    // Pending transactions may use valueDate or transactionDate instead of bookingDate
-    final dateStr = raw['bookingDate'] as String? ??
-        raw['valueDate'] as String? ??
-        raw['transactionDate'] as String?;
-    final date = DateTime.tryParse(dateStr ?? '') ?? DateTime.now();
+    final date =
+        DateTime.tryParse(raw['date'] as String? ?? '') ?? DateTime.now();
+    final id = raw['transaction_id'] as String? ??
+        '${date.millisecondsSinceEpoch}_${plaidAmount.toStringAsFixed(0)}';
 
-    final type = _categorizer.categorizeType(receiver, description);
+    final type = _categorizer.categorizeType(merchant, description);
     final bucket = _categorizer.categorizeBucket(type, amount);
 
     return Transaction(
-      id: raw['transactionId'] as String? ??
-          raw['internalTransactionId'] as String? ??
-          '${date.millisecondsSinceEpoch}_${amount.toStringAsFixed(0)}',
+      id: id,
       date: date,
       amount: amount,
       description: description,
-      receiver: receiver,
+      receiver: merchant ?? name,
       type: type,
       bucket: bucket,
       isPending: isPending,
     );
   }
 
-  String _pickDescription(Map<String, dynamic> raw, String? receiver) {
-    // Prefer structured remittance, fallback to unstructured, then receiver, then generic
-    final structured =
-        raw['remittanceInformationStructured'] as String?;
-    final unstructured =
-        raw['remittanceInformationUnstructured'] as String?;
-    final additional = raw['additionalInformation'] as String?;
-
-    final candidate =
-        structured ?? unstructured ?? additional ?? receiver ?? 'Transaction';
-    return candidate.trim().isEmpty ? (receiver ?? 'Transaction') : candidate;
-  }
-
   double? _parseBalance(Map<String, dynamic> data) {
-    final balances = (data['balances'] as List<dynamic>?) ?? <dynamic>[];
-    if (balances.isEmpty) return null;
+    final accounts = (data['accounts'] as List<dynamic>?) ?? <dynamic>[];
+    if (accounts.isEmpty) return null;
 
-    // Prefer interimAvailable, then closingBooked
-    final preferred = balances.firstWhere(
-      (b) => (b as Map<String, dynamic>)['balanceType'] == 'interimAvailable',
-      orElse: () => balances.firstWhere(
-        (b) => (b as Map<String, dynamic>)['balanceType'] == 'closingBooked',
-        orElse: () => balances.first,
-      ),
-    ) as Map<String, dynamic>;
-
-    final amountStr = (preferred['balanceAmount']
-        as Map<String, dynamic>?)?['amount'] as String?;
-    return amountStr != null ? double.tryParse(amountStr) : null;
+    // Pick the first account with a non-null available balance
+    for (final account in accounts) {
+      final balances =
+          (account as Map<String, dynamic>)['balances'] as Map<String, dynamic>?;
+      if (balances == null) continue;
+      final available = (balances['available'] as num?)?.toDouble();
+      if (available != null) return available;
+      final current = (balances['current'] as num?)?.toDouble();
+      if (current != null) return current;
+    }
+    return null;
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  Future<String> _requireToken() async {
+  Future<({String clientId, String secret, String accessToken})>
+      _requireCredentials() async {
+    final clientId = await _ds.getStoredClientId();
+    final secret = await _ds.getStoredSecret();
     final token = await _ds.getStoredAccessToken();
-    if (token == null) throw Exception('Non connecté. Lance la connexion Revolut.');
-    return token;
-  }
-
-  Future<String> _requireAccountId() async {
-    final id = await _ds.getStoredAccountId();
-    if (id == null) throw Exception('Aucun compte lié. Reconnecte Revolut.');
-    return id;
+    if (clientId == null || secret == null || token == null) {
+      throw Exception('Non connecté. Lance la connexion Plaid.');
+    }
+    return (clientId: clientId, secret: secret, accessToken: token);
   }
 }

@@ -11,14 +11,14 @@ final _categorizerProvider = Provider<TransactionCategorizer>(
 
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   return TransactionRepository(
-    ref.read(gocardlessDatasourceProvider),
+    ref.read(plaidDataSourceProvider),
     ref.read(_categorizerProvider),
   );
 });
 
 /// Loads transactions for the current month.
 /// In mock mode: returns hardcoded data.
-/// In real mode: fetches from GoCardless with auto token-refresh.
+/// In real mode: fetches from Plaid.
 final transactionsProvider =
     AsyncNotifierProvider<_TransactionsNotifier, List<Transaction>>(
   _TransactionsNotifier.new,
@@ -42,7 +42,7 @@ class _TransactionsNotifier extends AsyncNotifier<List<Transaction>> {
   }
 }
 
-/// Current Revolut balance. Null if not connected or unavailable.
+/// Current balance. Null if not connected or unavailable.
 final balanceProvider = FutureProvider<double?>((ref) async {
   if (kMockMode) return 1_367.27;
   final repo = ref.read(transactionRepositoryProvider);

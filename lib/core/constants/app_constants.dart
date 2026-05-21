@@ -1,9 +1,8 @@
 class AppConstants {
   static const String appName = 'Tally';
 
-  // GoCardless (Nordigen) API
-  static const String gocardlessBaseUrl = 'https://bankaccountdata.gocardless.com/api/v2';
-  static const String revoltInstitutionId = 'REVOLUT_REVOGB21';
+  // Plaid API
+  static const String plaidBaseUrl = 'https://sandbox.plaid.com';
 
   // Bucket names
   static const String bucketLife = 'Life';
@@ -12,9 +11,9 @@ class AppConstants {
   static const String bucketBills = 'Bills';
 
   // Storage keys
-  static const String keyGocardlessAccessToken = 'gc_access_token';
-  static const String keyGocardlessRefreshToken = 'gc_refresh_token';
-  static const String keyRequisitionId = 'gc_requisition_id';
-  static const String keyAccountId = 'gc_account_id';
+  static const String keyPlaidClientId = 'plaid_client_id';
+  static const String keyPlaidSecret = 'plaid_secret';
+  static const String keyPlaidAccessToken = 'plaid_access_token';
+  static const String keyPlaidItemId = 'plaid_item_id';
   static const String keyBucketConfig = 'bucket_config';
 }
