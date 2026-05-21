@@ -22,6 +22,7 @@ class Transaction {
   final TransactionType type;
   final TransactionBucket bucket;
   final bool isAutoCategorizied;
+  final bool isPending;
 
   const Transaction({
     required this.id,
@@ -32,6 +33,7 @@ class Transaction {
     required this.type,
     required this.bucket,
     this.isAutoCategorizied = true,
+    this.isPending = false,
   });
 
   bool get isExpense => amount < 0;

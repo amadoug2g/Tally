@@ -121,10 +121,12 @@ class _DashboardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Compute spent per bucket
+    // Compute spent per bucket (booked only, no fund/income)
     double lifeSpent = 0, bufferSpent = 0, vaultSpent = 0, billsSpent = 0;
     for (final t in transactions) {
-      if (t.type == TransactionType.fund || t.type == TransactionType.income) {
+      if (t.isPending ||
+          t.type == TransactionType.fund ||
+          t.bucket == TransactionBucket.income) {
         continue;
       }
       final abs = t.amount.abs();
@@ -149,17 +151,19 @@ class _DashboardBody extends StatelessWidget {
     final billsBudget = config?.billsAmount ?? 0;
 
     final income = transactions
-        .where((t) => t.isIncome)
+        .where((t) => t.isIncome && !t.isPending)
         .fold(0.0, (s, t) => s + t.amount);
     final spent = transactions
-        .where((t) => t.isExpense && t.type != TransactionType.fund)
+        .where((t) =>
+            t.isExpense && !t.isPending && t.type != TransactionType.fund)
         .fold(0.0, (s, t) => s + t.amount.abs());
     final remaining = income - spent;
 
     final recent = transactions
         .where((t) =>
+            !t.isPending &&
             t.type != TransactionType.fund &&
-            t.type != TransactionType.income)
+            t.bucket != TransactionBucket.income)
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -168,6 +172,7 @@ class _DashboardBody extends StatelessWidget {
         _LargeTitleBar(
           month: month,
           onTransactions: (ctx) => ctx.go('/dashboard/transactions'),
+          onBills: (ctx) => ctx.go('/dashboard/bills'),
           onBuckets: (ctx) => ctx.go('/dashboard/buckets'),
         ),
         SliverToBoxAdapter(
@@ -236,11 +241,13 @@ class _LargeTitleBar extends StatelessWidget {
   final String month;
   final void Function(BuildContext)? onTransactions;
   final void Function(BuildContext)? onBuckets;
+  final void Function(BuildContext)? onBills;
 
   const _LargeTitleBar({
     required this.month,
     this.onTransactions,
     this.onBuckets,
+    this.onBills,
   });
 
   @override
@@ -274,6 +281,14 @@ class _LargeTitleBar extends StatelessWidget {
             onPressed:
                 onTransactions != null ? () => onTransactions!(ctx) : null,
             tooltip: 'Transactions',
+          ),
+        ),
+        Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(CupertinoIcons.doc_text),
+            color: TallyColors.systemBlue,
+            onPressed: onBills != null ? () => onBills!(ctx) : null,
+            tooltip: 'Bills',
           ),
         ),
         Builder(

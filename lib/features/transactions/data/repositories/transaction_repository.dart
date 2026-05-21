@@ -78,20 +78,31 @@ class TransactionRepository {
   List<Transaction> _parseTransactions(Map<String, dynamic> data) {
     final booked =
         (data['transactions']?['booked'] as List<dynamic>?) ?? <dynamic>[];
+    final pending =
+        (data['transactions']?['pending'] as List<dynamic>?) ?? <dynamic>[];
 
-    final txs = booked.map<Transaction?>((raw) {
-      try {
-        return _mapOne(raw as Map<String, dynamic>);
-      } catch (_) {
-        return null;
-      }
-    }).whereType<Transaction>().toList();
+    final txs = [
+      ...booked.map<Transaction?>((raw) {
+        try {
+          return _mapOne(raw as Map<String, dynamic>, isPending: false);
+        } catch (_) {
+          return null;
+        }
+      }).whereType<Transaction>(),
+      ...pending.map<Transaction?>((raw) {
+        try {
+          return _mapOne(raw as Map<String, dynamic>, isPending: true);
+        } catch (_) {
+          return null;
+        }
+      }).whereType<Transaction>(),
+    ];
 
     txs.sort((a, b) => b.date.compareTo(a.date));
     return txs;
   }
 
-  Transaction _mapOne(Map<String, dynamic> raw) {
+  Transaction _mapOne(Map<String, dynamic> raw, {bool isPending = false}) {
     final amountStr =
         (raw['transactionAmount'] as Map<String, dynamic>?)?['amount']
                 as String? ??
@@ -105,14 +116,18 @@ class TransactionRepository {
     // Revolut returns multiple description fields; pick the most informative one
     final description = _pickDescription(raw, receiver);
 
-    final date =
-        DateTime.tryParse(raw['bookingDate'] as String? ?? '') ?? DateTime.now();
+    // Pending transactions may use valueDate or transactionDate instead of bookingDate
+    final dateStr = raw['bookingDate'] as String? ??
+        raw['valueDate'] as String? ??
+        raw['transactionDate'] as String?;
+    final date = DateTime.tryParse(dateStr ?? '') ?? DateTime.now();
 
     final type = _categorizer.categorizeType(receiver, description);
     final bucket = _categorizer.categorizeBucket(type, amount);
 
     return Transaction(
       id: raw['transactionId'] as String? ??
+          raw['internalTransactionId'] as String? ??
           '${date.millisecondsSinceEpoch}_${amount.toStringAsFixed(0)}',
       date: date,
       amount: amount,
@@ -120,6 +135,7 @@ class TransactionRepository {
       receiver: receiver,
       type: type,
       bucket: bucket,
+      isPending: isPending,
     );
   }
 

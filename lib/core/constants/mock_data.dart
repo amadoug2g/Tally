@@ -1,6 +1,6 @@
 import '../../../features/transactions/domain/entities/transaction.dart';
 
-const bool kMockMode = true;
+const bool kMockMode = false;
 
 final List<Transaction> mockTransactions = [
   Transaction(

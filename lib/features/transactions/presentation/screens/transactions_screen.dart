@@ -52,8 +52,9 @@ class TransactionsScreen extends ConsumerWidget {
         data: (txs) {
           final visible = txs
               .where((t) =>
+                  !t.isPending &&
                   t.type != TransactionType.fund &&
-                  t.type != TransactionType.income)
+                  t.bucket != TransactionBucket.income)
               .toList()
             ..sort((a, b) => b.date.compareTo(a.date));
 
