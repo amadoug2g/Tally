@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/saltedge_auth_repository.dart';
 import '../../../transactions/data/datasources/saltedge_datasource.dart';
@@ -52,7 +53,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final connectUrl = await _repo.startConnect(appId, secret);
       state = AuthWaitingOAuth(connectUrl);
     } catch (e) {
-      state = AuthError(e.toString());
+      state = AuthError(_errorMessage(e));
     }
   }
 
@@ -62,9 +63,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _repo.handleCallback(connectionId);
       state = AuthConnected();
     } catch (e) {
-      state = AuthError(e.toString());
+      state = AuthError(_errorMessage(e));
     }
   }
 
   void reset() => state = AuthInitial();
+
+  String _errorMessage(Object e) {
+    if (e is DioException && e.response != null) {
+      final data = e.response!.data;
+      final status = e.response!.statusCode;
+      // Salt Edge wraps errors in {"error": {"class": "...", "message": "..."}}
+      if (data is Map) {
+        final err = data['error'] as Map?;
+        if (err != null) {
+          return '${err['class'] ?? status}: ${err['message'] ?? data}';
+        }
+      }
+      return 'HTTP $status — ${e.response!.requestOptions.uri} — $data';
+    }
+    return e.toString();
+  }
 }
