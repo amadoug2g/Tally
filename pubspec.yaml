@@ -40,8 +40,6 @@ dependencies:
   url_launcher: ^6.3.1
   app_links: ^6.4.0
 
-  # Plaid Link SDK (iOS/Android natif)
-  plaid_flutter: ^5.1.1
 
 dev_dependencies:
   flutter_test:

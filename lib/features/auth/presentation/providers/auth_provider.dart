@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/plaid_auth_repository.dart';
-import '../../../transactions/data/datasources/plaid_datasource.dart';
+import '../../data/repositories/saltedge_auth_repository.dart';
+import '../../../transactions/data/datasources/saltedge_datasource.dart';
 
-final plaidDataSourceProvider =
-    Provider<PlaidDataSource>((_) => PlaidDataSource());
+final saltEdgeDataSourceProvider =
+    Provider<SaltEdgeDataSource>((_) => SaltEdgeDataSource());
 
-final authRepositoryProvider = Provider<PlaidAuthRepository>(
-  (ref) => PlaidAuthRepository(ref.read(plaidDataSourceProvider)),
+final authRepositoryProvider = Provider<SaltEdgeAuthRepository>(
+  (ref) => SaltEdgeAuthRepository(ref.read(saltEdgeDataSourceProvider)),
 );
 
 sealed class AuthState {}
@@ -15,14 +15,14 @@ class AuthInitial extends AuthState {}
 
 class AuthAuthenticating extends AuthState {}
 
-/// link_token prêt — déclenche l'ouverture du SDK Plaid Link natif.
-class AuthLinkReady extends AuthState {
-  final String linkToken;
-  AuthLinkReady(this.linkToken);
+/// connect_url prêt — ouvrir dans le navigateur externe.
+class AuthWaitingOAuth extends AuthState {
+  final String connectUrl;
+  AuthWaitingOAuth(this.connectUrl);
 }
 
-/// Échange du public_token en cours.
-class AuthConnecting extends AuthState {}
+/// Deep link reçu — récupération du compte en cours.
+class AuthFetchingAccounts extends AuthState {}
 
 class AuthConnected extends AuthState {}
 
@@ -36,32 +36,30 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
 );
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  final PlaidAuthRepository _repo;
+  final SaltEdgeAuthRepository _repo;
 
   AuthNotifier(this._repo) : super(AuthInitial()) {
     _checkExistingConnection();
   }
 
   Future<void> _checkExistingConnection() async {
-    if (await _repo.isConnected()) {
-      state = AuthConnected();
-    }
+    if (await _repo.isConnected()) state = AuthConnected();
   }
 
-  Future<void> connect(String clientId, String secret) async {
+  Future<void> connect(String appId, String secret) async {
     state = AuthAuthenticating();
     try {
-      final linkToken = await _repo.createLinkToken(clientId, secret);
-      state = AuthLinkReady(linkToken);
+      final connectUrl = await _repo.startConnect(appId, secret);
+      state = AuthWaitingOAuth(connectUrl);
     } catch (e) {
       state = AuthError(e.toString());
     }
   }
 
-  Future<void> handlePlaidSuccess(String publicToken) async {
-    state = AuthConnecting();
+  Future<void> handleDeepLink(String connectionId) async {
+    state = AuthFetchingAccounts();
     try {
-      await _repo.exchangePublicToken(publicToken);
+      await _repo.handleCallback(connectionId);
       state = AuthConnected();
     } catch (e) {
       state = AuthError(e.toString());

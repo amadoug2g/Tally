@@ -11,14 +11,14 @@ final _categorizerProvider = Provider<TransactionCategorizer>(
 
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   return TransactionRepository(
-    ref.read(plaidDataSourceProvider),
+    ref.read(saltEdgeDataSourceProvider),
     ref.read(_categorizerProvider),
   );
 });
 
 /// Loads transactions for the current month.
 /// In mock mode: returns hardcoded data.
-/// In real mode: fetches from Plaid.
+/// In real mode: fetches from Salt Edge.
 final transactionsProvider =
     AsyncNotifierProvider<_TransactionsNotifier, List<Transaction>>(
   _TransactionsNotifier.new,
