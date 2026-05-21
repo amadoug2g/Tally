@@ -101,52 +101,61 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
-        Text('Credentials Salt Edge',
-            style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        const Text(
-          'saltedge.com → Settings → Applications → ton app → App ID + Secret.',
-          style: TextStyle(fontSize: 15, color: TallyColors.secondaryLabel),
-        ),
-        const SizedBox(height: 28),
-        _IOSTextField(
-          controller: _appIdCtrl,
-          placeholder: 'App ID',
-          autofillHint: AutofillHints.username,
-        ),
-        const SizedBox(height: 1),
-        _IOSTextField(
-          controller: _secretCtrl,
-          placeholder: 'Secret',
-          obscureText: true,
-          autofillHint: AutofillHints.password,
-        ),
-        if (state is AuthError) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: TallyColors.systemRed.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(CupertinoIcons.exclamationmark_circle,
-                    color: TallyColors.systemRed, size: 17),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    (state as AuthError).message,
-                    style: const TextStyle(
-                        color: TallyColors.systemRed, fontSize: 14),
-                  ),
+                const SizedBox(height: 8),
+                Text('Credentials Salt Edge',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                const Text(
+                  'saltedge.com → Settings → Applications → ton app → App ID + Secret.',
+                  style: TextStyle(fontSize: 15, color: TallyColors.secondaryLabel),
                 ),
+                const SizedBox(height: 28),
+                _IOSTextField(
+                  controller: _appIdCtrl,
+                  placeholder: 'App ID',
+                  autofillHint: AutofillHints.username,
+                ),
+                const SizedBox(height: 1),
+                _IOSTextField(
+                  controller: _secretCtrl,
+                  placeholder: 'Secret',
+                  obscureText: true,
+                  autofillHint: AutofillHints.password,
+                ),
+                if (state is AuthError) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: TallyColors.systemRed.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(CupertinoIcons.exclamationmark_circle,
+                            color: TallyColors.systemRed, size: 17),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            (state as AuthError).message,
+                            style: const TextStyle(
+                                color: TallyColors.systemRed, fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-        ],
-        const Spacer(),
+        ),
+        const SizedBox(height: 16),
         FilledButton(
           onPressed: state is AuthAuthenticating ? null : _onConnect,
           style: FilledButton.styleFrom(
@@ -163,8 +172,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
                       strokeWidth: 2, color: Colors.white),
                 )
               : const Text('Connecter',
-                  style:
-                      TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -183,7 +191,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   }
 }
 
-// ─── Waiting for OAuth ────────────────────────────────────────────────────────
+// ─── Waiting for OAuth ───────────────────────────────────────────────────────────────────────
 
 class _WaitingOAuthView extends StatelessWidget {
   final String connectUrl;
@@ -237,7 +245,7 @@ class _WaitingOAuthView extends StatelessWidget {
   }
 }
 
-// ─── iOS-style text field ─────────────────────────────────────────────────────
+// ─── iOS-style text field ─────────────────────────────────────────────────────────────────────
 
 class _IOSTextField extends StatelessWidget {
   final TextEditingController controller;
