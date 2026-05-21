@@ -73,8 +73,8 @@ class BillsScreen extends ConsumerWidget {
             return RefreshIndicator.adaptive(
               onRefresh: () async =>
                   ref.read(transactionsProvider.notifier).refresh(),
-              child: const ListView(
-                children: [
+              child: ListView(
+                children: const [
                   SizedBox(height: 120),
                   Center(
                     child: Text(
